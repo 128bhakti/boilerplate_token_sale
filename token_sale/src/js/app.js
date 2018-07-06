@@ -13,9 +13,15 @@ App = {
   },
 
   initWeb3: function() {
-
-   /*write code to get Web3 provider*/
-   //refer documentation
+    if (typeof web3 !== 'undefined') {
+      // If a web3 instance is already provided by Meta Mask.
+      App.web3Provider = web3.currentProvider;
+      web3 = new Web3(web3.currentProvider);
+    } else {
+      // Specify default instance if no web3 instance provided
+      App.web3Provider = new Web3.providers.HttpProvider('http://localhost:7545');
+      web3 = new Web3(App.web3Provider);
+    }
     return App.initContracts();
   },
 
@@ -28,8 +34,11 @@ App = {
       });
     }).done(function() {
       $.getJSON("DappToken.json", function(dappToken) {
-
-  /*write code to get ABI and address of DappToken.json (the same way as done for DappTokenSale.json)*/
+        App.contracts.DappToken = TruffleContract(dappToken);
+        App.contracts.DappToken.setProvider(App.web3Provider);
+        App.contracts.DappToken.deployed().then(function(dappToken) {
+          console.log("Dapp Token Address:", dappToken.address);
+        });
 
         App.listenForEvents();
         return App.render();
@@ -92,7 +101,6 @@ App = {
         return dappTokenInstance.balanceOf(App.account);
       }).then(function(balance) {
         $('.dapp-balance').html(balance.toNumber());
-
         App.loading = false;
         loader.hide();
         content.show();
@@ -105,10 +113,11 @@ App = {
     $('#loader').show();
     var numberOfTokens = $('#numberOfTokens').val();
     App.contracts.DappTokenSale.deployed().then(function(instance) {
-
-  /*write a code to call buyTokens() thereby passing numberOfTokens, and details such as {From, value and gas limit} */
-        /*refer documentation */
-
+      return instance.buyTokens(numberOfTokens, {
+        from: App.account,
+        value: numberOfTokens * App.tokenPrice,
+        gas: 500000 // Gas limit
+      });
     }).then(function(result) {
       console.log("Tokens bought...")
       $('form').trigger('reset') // reset number of tokens in form
